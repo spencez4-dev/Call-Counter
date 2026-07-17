@@ -7,7 +7,7 @@
   <meta name="description" content="A game-like shipment load tracker with hourly road races, XP levels, unlockable rigs, goals, and timestamped updates.">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="styles.css?v=3.6.0">
+  <link rel="stylesheet" href="styles.css?v=3.7.0">
   <title>Let it Rip</title>
 </head>
 <body>
@@ -53,6 +53,56 @@
         <div class="metric">
           <span>Hourly streak</span>
           <strong id="streakMetric">0</strong>
+        </div>
+      </div>
+    </section>
+
+
+
+    <section class="rocket-card glass" aria-labelledby="rocketTitle">
+      <div class="section-heading rocket-heading">
+        <div>
+          <span class="section-kicker">DAILY ASCENT</span>
+          <h2 id="rocketTitle">Mission to 100</h2>
+        </div>
+        <div class="rocket-score-wrap">
+          <strong id="rocketCallCount">0</strong>
+          <span>calls</span>
+        </div>
+      </div>
+
+      <div id="rocketWorld" class="rocket-world">
+        <div class="rocket-stars" aria-hidden="true"></div>
+        <svg id="rocketChart" class="rocket-chart" viewBox="0 0 820 430" preserveAspectRatio="none" role="img" aria-label="Daily rocket ascent toward 100 calls">
+          <defs>
+            <linearGradient id="rocketTrailGradient" x1="0" y1="1" x2="1" y2="0">
+              <stop offset="0%" stop-color="#7458ff"></stop>
+              <stop offset="100%" stop-color="#ff5c91"></stop>
+            </linearGradient>
+            <filter id="rocketTrailGlow" x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur stdDeviation="5" result="blur"></feGaussianBlur>
+              <feMerge><feMergeNode in="blur"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge>
+            </filter>
+          </defs>
+          <g id="rocketMilestones" class="rocket-milestones"></g>
+          <path id="rocketTrailGlowPath" class="rocket-trail-glow" d=""></path>
+          <path id="rocketTrailPath" class="rocket-trail" d=""></path>
+        </svg>
+
+        <div id="rocketVehicle" class="rocket-vehicle" aria-hidden="true">
+          <span class="rocket-body">🚀</span>
+          <span class="rocket-flame"></span>
+        </div>
+      </div>
+
+      <div class="rocket-footer">
+        <div>
+          <strong id="rocketAltitude">Altitude 0.0</strong>
+          <span id="rocketStatus">Launch pad ready.</span>
+        </div>
+        <div class="rocket-next">
+          <span>Next</span>
+          <strong id="rocketNextMilestone">Mercury · 10</strong>
         </div>
       </div>
     </section>
@@ -145,7 +195,7 @@
   <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <div id="megaMessage" class="mega-message">CHECKERED FLAG!</div>
-  <div class="build-badge">LOAD RUSH · V3.6</div>
+  <div class="build-badge">LOAD RUSH · V3.7</div>
 
 
   <dialog id="fatePromptDialog" class="fate-dialog">
@@ -423,6 +473,6 @@
     </div>
   </dialog>
 
-  <script src="app.js?v=3.6.0" defer></script>
+  <script src="app.js?v=3.7.0" defer></script>
 </body>
 </html>

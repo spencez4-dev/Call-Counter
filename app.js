@@ -144,6 +144,238 @@ const FATE_EVENTS = [
 
 const $ = id => document.getElementById(id);
 
+/* === V3.7 DAILY ROCKET ASCENT (isolated module) === */
+const ROCKET_STORAGE_KEY = 'loadRushRocketV37';
+const ROCKET_DECAY_PER_MINUTE = 0.02;
+const ROCKET_DAY_START_HOUR = 7;
+const ROCKET_DAY_END_HOUR = 18;
+const ROCKET_VIEWBOX = { width: 820, height: 430, padX: 42, padY: 28 };
+const ROCKET_MILESTONES = [
+  { value: 10, name: 'Mercury', icon: '☿' },
+  { value: 20, name: 'Earth', icon: '🌍' },
+  { value: 30, name: 'Mars', icon: '🔴' },
+  { value: 40, name: 'Jupiter', icon: '🟠' },
+  { value: 50, name: 'Saturn', icon: '🪐' },
+  { value: 60, name: 'Uranus', icon: '🌀' },
+  { value: 70, name: 'Neptune', icon: '🔵' },
+  { value: 80, name: 'Deep Space', icon: '✨' },
+  { value: 90, name: 'Pearly Gates', icon: '🚪' },
+  { value: 100, name: 'Heaven', icon: '☁️' }
+];
+
+let rocketState = null;
+let rocketMinuteTimer = null;
+let rocketBoostTimer = null;
+
+function rocketDayKey(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function rocketDayStart(date = new Date()) {
+  const start = new Date(date);
+  start.setHours(ROCKET_DAY_START_HOUR, 0, 0, 0);
+  return start.getTime();
+}
+
+function rocketDayEnd(date = new Date()) {
+  const end = new Date(date);
+  end.setHours(ROCKET_DAY_END_HOUR, 0, 0, 0);
+  return end.getTime();
+}
+
+function createRocketState(now = Date.now()) {
+  const currentLoads = Math.max(0, typeof todayNetLoads === 'function' ? todayNetLoads() : 0);
+  const start = rocketDayStart(new Date(now));
+  return {
+    date: rocketDayKey(new Date(now)),
+    altitude: currentLoads,
+    lastUpdated: now,
+    points: [
+      { time: start, altitude: 0 },
+      ...(now > start ? [{ time: now, altitude: currentLoads }] : [])
+    ]
+  };
+}
+
+function loadRocketState() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(ROCKET_STORAGE_KEY) || 'null');
+    if (stored && stored.date === rocketDayKey() && Array.isArray(stored.points)) {
+      stored.altitude = Math.max(0, Number(stored.altitude) || 0);
+      stored.lastUpdated = Number(stored.lastUpdated) || Date.now();
+      stored.points = stored.points
+        .filter(point => Number.isFinite(Number(point.time)) && Number.isFinite(Number(point.altitude)))
+        .map(point => ({ time: Number(point.time), altitude: Math.max(0, Number(point.altitude)) }))
+        .slice(-720);
+      return stored;
+    }
+  } catch (error) {
+    console.warn('Rocket state could not be read:', error);
+  }
+  return createRocketState();
+}
+
+function saveRocketState() {
+  try {
+    localStorage.setItem(ROCKET_STORAGE_KEY, JSON.stringify(rocketState));
+  } catch (error) {
+    console.warn('Rocket state could not be saved:', error);
+  }
+}
+
+function ensureRocketDay() {
+  if (!rocketState || rocketState.date !== rocketDayKey()) {
+    rocketState = createRocketState();
+    saveRocketState();
+  }
+}
+
+function applyRocketDecay(now = Date.now(), recordPoint = false) {
+  ensureRocketDay();
+  const elapsedMinutes = Math.max(0, (now - rocketState.lastUpdated) / 60000);
+  if (elapsedMinutes > 0) {
+    rocketState.altitude = Math.max(0, rocketState.altitude - elapsedMinutes * ROCKET_DECAY_PER_MINUTE);
+    rocketState.lastUpdated = now;
+  }
+  if (recordPoint) pushRocketPoint(now, rocketState.altitude);
+}
+
+function pushRocketPoint(time, altitude) {
+  const point = { time, altitude: Math.max(0, Math.min(100, altitude)) };
+  const last = rocketState.points[rocketState.points.length - 1];
+  if (last && Math.abs(last.time - point.time) < 500) {
+    rocketState.points[rocketState.points.length - 1] = point;
+  } else {
+    rocketState.points.push(point);
+  }
+  rocketState.points = rocketState.points.slice(-720);
+}
+
+function rocketRecordDelta(delta) {
+  const now = Date.now();
+  applyRocketDecay(now, false);
+  rocketState.altitude = Math.max(0, rocketState.altitude + Number(delta || 0));
+  rocketState.lastUpdated = now;
+  pushRocketPoint(now, rocketState.altitude);
+  saveRocketState();
+  renderRocketAscent(true);
+}
+
+function resetRocketStateFromToday() {
+  rocketState = createRocketState();
+  saveRocketState();
+  renderRocketAscent(false);
+}
+
+function rocketXForTime(timestamp) {
+  const start = rocketDayStart(new Date(timestamp));
+  const end = rocketDayEnd(new Date(timestamp));
+  const fraction = Math.max(0, Math.min(1, (timestamp - start) / Math.max(1, end - start)));
+  return ROCKET_VIEWBOX.padX + fraction * (ROCKET_VIEWBOX.width - ROCKET_VIEWBOX.padX * 2);
+}
+
+function rocketYForAltitude(altitude) {
+  const fraction = Math.max(0, Math.min(1, altitude / 100));
+  return ROCKET_VIEWBOX.height - ROCKET_VIEWBOX.padY - fraction * (ROCKET_VIEWBOX.height - ROCKET_VIEWBOX.padY * 2);
+}
+
+function smoothRocketPath(points) {
+  if (!points.length) return '';
+  if (points.length === 1) return `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`;
+
+  let path = `M ${points[0].x.toFixed(2)} ${points[0].y.toFixed(2)}`;
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const p0 = points[Math.max(0, index - 1)];
+    const p1 = points[index];
+    const p2 = points[index + 1];
+    const p3 = points[Math.min(points.length - 1, index + 2)];
+    const c1x = p1.x + (p2.x - p0.x) / 6;
+    const c1y = p1.y + (p2.y - p0.y) / 6;
+    const c2x = p2.x - (p3.x - p1.x) / 6;
+    const c2y = p2.y - (p3.y - p1.y) / 6;
+    path += ` C ${c1x.toFixed(2)} ${c1y.toFixed(2)}, ${c2x.toFixed(2)} ${c2y.toFixed(2)}, ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
+  }
+  return path;
+}
+
+function renderRocketMilestones() {
+  const group = $('rocketMilestones');
+  if (!group || group.dataset.ready === 'true') return;
+  group.dataset.ready = 'true';
+  group.innerHTML = ROCKET_MILESTONES.map((milestone, index) => {
+    const y = rocketYForAltitude(milestone.value);
+    const labelX = index % 2 === 0 ? 58 : 650;
+    return `
+      <line class="rocket-milestone-line" x1="42" y1="${y}" x2="778" y2="${y}"></line>
+      <circle class="rocket-milestone-dot" cx="${labelX - 13}" cy="${y}" r="5"></circle>
+      <text class="rocket-milestone-label" x="${labelX}" y="${y + 4}">${milestone.icon} ${milestone.name} · ${milestone.value}</text>
+    `;
+  }).join('');
+}
+
+function rocketStatusText(altitude) {
+  if (altitude >= 100) return 'Heaven reached. Absolute cinema.';
+  if (altitude >= 80) return 'Deep-space momentum.';
+  if (altitude >= 50) return 'Major altitude. Keep climbing.';
+  if (altitude >= 20) return 'Orbit is building.';
+  if (altitude >= 1) return 'Ascending smoothly.';
+  return 'Launch pad ready.';
+}
+
+function renderRocketAscent(animateBoost = false) {
+  if (!$('rocketWorld')) return;
+  ensureRocketDay();
+  applyRocketDecay(Date.now(), false);
+  renderRocketMilestones();
+
+  const visiblePoints = rocketState.points
+    .concat([{ time: Date.now(), altitude: rocketState.altitude }])
+    .map(point => ({ x: rocketXForTime(point.time), y: rocketYForAltitude(point.altitude) }))
+    .filter((point, index, array) => index === 0 || point.x !== array[index - 1].x || point.y !== array[index - 1].y);
+
+  const path = smoothRocketPath(visiblePoints);
+  $('rocketTrailPath').setAttribute('d', path);
+  $('rocketTrailGlowPath').setAttribute('d', path);
+
+  const current = visiblePoints[visiblePoints.length - 1] || { x: ROCKET_VIEWBOX.padX, y: rocketYForAltitude(0) };
+  const previous = visiblePoints[Math.max(0, visiblePoints.length - 2)] || current;
+  const angle = Math.atan2(current.y - previous.y, current.x - previous.x) * 180 / Math.PI + 45;
+  const rocket = $('rocketVehicle');
+  rocket.style.left = `${current.x / ROCKET_VIEWBOX.width * 100}%`;
+  rocket.style.top = `${current.y / ROCKET_VIEWBOX.height * 100}%`;
+  rocket.style.setProperty('--rocket-angle', `${Math.max(-72, Math.min(34, angle))}deg`);
+
+  if (animateBoost) {
+    rocket.classList.add('boosting');
+    clearTimeout(rocketBoostTimer);
+    rocketBoostTimer = setTimeout(() => rocket.classList.remove('boosting'), 850);
+  }
+
+  const calls = Math.max(0, typeof todayNetLoads === 'function' ? todayNetLoads() : 0);
+  $('rocketCallCount').textContent = calls;
+  $('rocketAltitude').textContent = `Altitude ${rocketState.altitude.toFixed(1)}`;
+  $('rocketStatus').textContent = rocketStatusText(rocketState.altitude);
+  const next = ROCKET_MILESTONES.find(milestone => milestone.value > rocketState.altitude);
+  $('rocketNextMilestone').textContent = next ? `${next.name} · ${next.value}` : 'Heaven reached';
+  saveRocketState();
+}
+
+function startRocketAscent() {
+  rocketState = loadRocketState();
+  renderRocketAscent(false);
+  clearInterval(rocketMinuteTimer);
+  rocketMinuteTimer = setInterval(() => {
+    applyRocketDecay(Date.now(), true);
+    saveRocketState();
+    renderRocketAscent(false);
+  }, 60000);
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) renderRocketAscent(false);
+  });
+}
+
+
 function readStoredState() {
   const direct = localStorage.getItem(STORAGE_KEY);
   if (direct) {
@@ -419,6 +651,7 @@ function renderAll() {
   $('fateFrequencySelect').value = String(state.fateFrequency || 10);
 
   applyTheme();
+  renderRocketAscent(false);
   renderLog();
   renderGarage();
 }
@@ -1217,6 +1450,8 @@ function addLoad(delta) {
     time: Date.now()
   });
 
+  rocketRecordDelta(delta);
+
   const plusMessages = [
     'Load secured.',
     'Driver updated.',
@@ -1263,7 +1498,8 @@ function undoLast() {
     return;
   }
 
-  state.log.shift();
+  const removedEntry = state.log.shift();
+  rocketRecordDelta(-Number(removedEntry?.delta || 0));
   saveState();
   renderAll();
   showToast('Last update removed');
@@ -1783,6 +2019,8 @@ function bindEvents() {
     });
 
     saveState();
+    localStorage.removeItem(ROCKET_STORAGE_KEY);
+    resetRocketStateFromToday();
     renderAll();
     closeDialog($('settingsDialog'));
     showToast('Load Rush reset');
@@ -1895,6 +2133,7 @@ async function initialize() {
 
   renderAll();
   renderReminders();
+  startRocketAscent();
   startHourlyClock();
   checkReminders();
   setInterval(checkReminders, 1000);

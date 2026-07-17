@@ -1887,3 +1887,252 @@ body.alarm-active {
   position: relative;
   z-index: 20;
 }
+
+/* === V3.7 DAILY ROCKET ASCENT (isolated module) === */
+.rocket-card {
+  margin-top: 15px;
+  padding: 20px;
+  border-radius: 30px;
+}
+
+.rocket-heading {
+  align-items: center;
+}
+
+.rocket-score-wrap {
+  min-width: 76px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 17px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  text-align: center;
+}
+
+.rocket-score-wrap strong,
+.rocket-score-wrap span {
+  display: block;
+}
+
+.rocket-score-wrap strong {
+  font-size: 1.35rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.rocket-score-wrap span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: .68rem;
+  font-weight: 850;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.rocket-world {
+  position: relative;
+  height: 430px;
+  margin-top: 16px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 88% 10%, rgba(255,255,255,.17), transparent 22%),
+    radial-gradient(circle at 16% 86%, color-mix(in srgb, var(--accent) 28%, transparent), transparent 32%),
+    linear-gradient(145deg, #11152d 0%, #242048 48%, #4a2458 100%);
+  box-shadow: inset 0 0 70px rgba(0,0,0,.25);
+}
+
+.rocket-stars,
+.rocket-stars::before,
+.rocket-stars::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle, rgba(255,255,255,.85) 0 1px, transparent 1.5px),
+    radial-gradient(circle, rgba(255,255,255,.5) 0 1px, transparent 1.4px);
+  background-size: 72px 72px, 113px 113px;
+  background-position: 8px 12px, 34px 49px;
+  opacity: .55;
+}
+
+.rocket-stars::before {
+  transform: translate(22px, 19px) scale(.8);
+  opacity: .42;
+}
+
+.rocket-stars::after {
+  transform: translate(-16px, 31px) scale(1.15);
+  opacity: .25;
+}
+
+.rocket-chart {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.rocket-trail,
+.rocket-trail-glow {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.rocket-trail-glow {
+  stroke: url(#rocketTrailGradient);
+  stroke-width: 13;
+  opacity: .30;
+  filter: url(#rocketTrailGlow);
+}
+
+.rocket-trail {
+  stroke: url(#rocketTrailGradient);
+  stroke-width: 5;
+  filter: drop-shadow(0 0 8px rgba(153,134,255,.72));
+}
+
+.rocket-milestone-line {
+  stroke: rgba(255,255,255,.12);
+  stroke-width: 1;
+  stroke-dasharray: 5 8;
+}
+
+.rocket-milestone-dot {
+  fill: rgba(255,255,255,.11);
+  stroke: rgba(255,255,255,.38);
+  stroke-width: 1.5;
+}
+
+.rocket-milestone-label {
+  fill: rgba(255,255,255,.76);
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: .02em;
+}
+
+.rocket-vehicle {
+  --rocket-angle: -35deg;
+  position: absolute;
+  left: 38px;
+  top: calc(100% - 50px);
+  z-index: 5;
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  transform: translate(-50%, -50%) rotate(var(--rocket-angle));
+  transition:
+    left .78s cubic-bezier(.18,.78,.18,1),
+    top .78s cubic-bezier(.18,.78,.18,1),
+    transform .78s cubic-bezier(.18,.78,.18,1);
+  filter: drop-shadow(0 10px 14px rgba(0,0,0,.32));
+}
+
+.rocket-body {
+  position: relative;
+  z-index: 2;
+  font-size: 3.25rem;
+  line-height: 1;
+}
+
+.rocket-flame {
+  position: absolute;
+  left: 4px;
+  bottom: 8px;
+  width: 26px;
+  height: 12px;
+  border-radius: 60% 10% 60% 10%;
+  background: linear-gradient(90deg, #ffe56f, #ff7b54 55%, transparent);
+  opacity: .72;
+  transform: rotate(42deg) scaleX(.72);
+  transform-origin: right center;
+  filter: blur(.3px) drop-shadow(0 0 8px #ff7b54);
+  animation: rocketIdleFlame .38s ease-in-out infinite alternate;
+}
+
+.rocket-vehicle.boosting .rocket-flame {
+  opacity: 1;
+  animation: rocketBoostFlame .12s ease-in-out infinite alternate;
+}
+
+.rocket-vehicle.boosting .rocket-body {
+  animation: rocketBoostShake .12s ease-in-out infinite alternate;
+}
+
+@keyframes rocketIdleFlame {
+  from { transform: rotate(42deg) scaleX(.58) scaleY(.78); }
+  to { transform: rotate(42deg) scaleX(.86) scaleY(1.02); }
+}
+
+@keyframes rocketBoostFlame {
+  from { transform: rotate(42deg) scaleX(1.05) scaleY(.85); }
+  to { transform: rotate(42deg) scaleX(1.6) scaleY(1.15); }
+}
+
+@keyframes rocketBoostShake {
+  from { transform: translate(-1px, 1px); }
+  to { transform: translate(1px, -1px); }
+}
+
+.rocket-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-top: 13px;
+}
+
+.rocket-footer strong,
+.rocket-footer span {
+  display: block;
+}
+
+.rocket-footer > div > span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: .82rem;
+}
+
+.rocket-next {
+  min-width: 120px;
+  text-align: right;
+}
+
+.rocket-next span {
+  color: var(--muted);
+  font-size: .68rem;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.rocket-next strong {
+  margin-top: 3px;
+  color: var(--accent);
+  font-size: .88rem;
+}
+
+@media (max-width: 540px) {
+  .rocket-world {
+    height: 360px;
+  }
+
+  .rocket-body {
+    font-size: 2.75rem;
+  }
+
+  .rocket-vehicle {
+    width: 50px;
+    height: 50px;
+  }
+
+  .rocket-milestone-label {
+    font-size: 10px;
+  }
+}
